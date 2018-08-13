@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace GZipTest
 {
@@ -10,9 +8,18 @@ namespace GZipTest
     {
         private static void Main(string[] args)
         {
-            if (args == null || args.Count() < 3)
+            if (args == null
+                || args.Count() < 3)
+            {
+                Console.WriteLine("Usage: GZipTest.exe compress/decompress [source file] [destination file]");
                 return;
-            var gzipWrapper = new GZipWrapper();
+            }
+            if (!new FileInfo(args[1]).Exists)
+            {
+                Console.WriteLine($"File '{args[1]}' not exist");
+                return;
+            }
+            var archiver = new GZipWrapper(bytesPerWorker: 1048576);
             switch (args[0])
             {
                 case null:
@@ -20,6 +27,12 @@ namespace GZipTest
                     return;
 
                 case "compress":
+                    Console.Write($"Compressed {archiver.Compress(args[1], args[2])} bytes");
+                    return;
+
+                case "decompress":
+                    Console.Write($"Decompressed {archiver.Decompress(args[1], args[2])} bytes");
+                    return;
             }
         }
     }

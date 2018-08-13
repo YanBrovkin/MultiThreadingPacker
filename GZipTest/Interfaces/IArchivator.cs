@@ -2,8 +2,8 @@
 {
     public interface IArchivator
     {
-        byte[] Compress(byte[] source);
+        int Compress(string sourceFile, string destFile);
 
-        byte[] Decompress(byte[] source);
+        int Decompress(string sourceFile, string destFile);
     }
 }
