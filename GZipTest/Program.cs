@@ -6,6 +6,8 @@ namespace GZipTest
 {
     internal class Program
     {
+        private const int _bytesPerWorker = 1048576;
+
         private static void Main(string[] args)
         {
             if (args == null
@@ -19,7 +21,7 @@ namespace GZipTest
                 Console.WriteLine($"File '{args[1]}' not exist");
                 return;
             }
-            var archiver = new GZipWrapper(maximumThreadsCount: 10);
+            var archiver = new GZipWrapper(bytesPerWorker: _bytesPerWorker);
             switch (args[0])
             {
                 case null:

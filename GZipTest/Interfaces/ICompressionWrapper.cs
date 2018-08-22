@@ -1,6 +1,6 @@
 ﻿namespace GZipTest
 {
-    public interface IArchivator
+    public interface ICompressionWrapper
     {
         int Compress(string sourceFile, string destFile);
 

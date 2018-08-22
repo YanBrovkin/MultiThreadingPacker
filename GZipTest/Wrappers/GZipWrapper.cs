@@ -9,22 +9,20 @@ namespace GZipTest
 {
     public class GZipWrapper : ICompressionWrapper
     {
-        private readonly int _maximumThreadsCount;
-        private readonly int bytesPerWorker = 1048576;
-        private Stream sourceStream;
-        private Stream destStream;
+        private readonly int _bytesPerWorker;
+        private Stream _sourceStream;
+        private Stream _destStream;
 
-        public GZipWrapper(int maximumThreadsCount)
-            => _maximumThreadsCount = maximumThreadsCount;
+        public GZipWrapper(int bytesPerWorker)
+            => _bytesPerWorker = bytesPerWorker;
 
         public int Compress(string sourceFile, string destFile)
         {
             Console.WriteLine($@"[{DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss")}] Compression started");
-
-            sourceStream = new FileStream(sourceFile, FileMode.Open);
-            destStream = new FileStream(destFile, FileMode.Create);
-            var memStreams = GetCompressedStreamsDictionary(sourceStream);
-            var compressedBytes = WriteCompressedStreamsToDestinationStream(destStream, memStreams);
+            _sourceStream = GetSourceStream(sourceFile);
+            _destStream = GetDestinationStream(destFile);
+            var memStreams = GetCompressedStreamsDictionary(_sourceStream);
+            var compressedBytes = WriteCompressedStreamsToDestinationStream(_destStream, memStreams);
             Console.WriteLine($@"[{DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss")}] Compression finished");
             return compressedBytes;
         }
@@ -32,24 +30,29 @@ namespace GZipTest
         public int Decompress(string sourceFile, string destFile)
         {
             Console.WriteLine($@"[{DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss")}] Decompression started");
-            sourceStream = new FileStream(sourceFile, FileMode.Open);
-            destStream = new FileStream(destFile, FileMode.Create);
-
-            var readUncompressedBytes = GetUnCompressedData(sourceStream);
-            var decompressedBytes = WriteUncompressedDataToDestinationStream(destStream, readUncompressedBytes);
+            _sourceStream = GetSourceStream(sourceFile);
+            _destStream = GetDestinationStream(destFile);
+            var readUncompressedBytes = GetUnCompressedData(_sourceStream);
+            var decompressedBytes = WriteUncompressedDataToDestinationStream(_destStream, readUncompressedBytes);
             Console.WriteLine($@"[{DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss")}] Decompression finished");
             return decompressedBytes;
         }
 
+        public virtual Stream GetSourceStream(string sourceFile)
+            => new FileStream(sourceFile, FileMode.Open);
+
+        public virtual Stream GetDestinationStream(string destinationFile)
+            => new FileStream(destinationFile, FileMode.Create);
+
         private IDictionary<int, MemoryStream> GetCompressedStreamsDictionary(Stream sourceStream)
         {
-            var numOfWorkers = (int)(sourceStream.Length / bytesPerWorker + 1);
+            var numOfWorkers = (int)(sourceStream.Length / _bytesPerWorker + 1);
             var memStreams = new Dictionary<int, MemoryStream>(numOfWorkers);
 
-            var bufferRead = new byte[bytesPerWorker];
+            var bufferRead = new byte[_bytesPerWorker];
 
-            var noOfThreadsF = (sourceStream.Length / (float)bytesPerWorker);
-            var noOfThreadsI = (int)sourceStream.Length / bytesPerWorker;
+            var noOfThreadsF = (sourceStream.Length / (float)_bytesPerWorker);
+            var noOfThreadsI = (int)sourceStream.Length / _bytesPerWorker;
             float toComp = noOfThreadsI;
             Thread[] threads;
             WaitHandle[] globalWaitHandles;
@@ -60,13 +63,13 @@ namespace GZipTest
             }
             else
             {
-                threads = new Thread[sourceStream.Length / bytesPerWorker];
-                globalWaitHandles = new WaitHandle[sourceStream.Length / bytesPerWorker];
+                threads = new Thread[sourceStream.Length / _bytesPerWorker];
+                globalWaitHandles = new WaitHandle[sourceStream.Length / _bytesPerWorker];
             }
             var threadsCounter = 0;
             var read = 0;
             var paramSyncEvent = new AutoResetEvent(false);
-            while (0 != (read = sourceStream.Read(bufferRead, 0, bytesPerWorker)))
+            while (0 != (read = sourceStream.Read(bufferRead, 0, _bytesPerWorker)))
             {
                 var globalSyncEvent = new AutoResetEvent(false);
                 threads[threadsCounter] = new Thread(() => CompressStream(bufferRead, read, threadsCounter, memStreams, paramSyncEvent, globalSyncEvent));
@@ -74,7 +77,7 @@ namespace GZipTest
                 threads[threadsCounter].Start();
                 paramSyncEvent.WaitOne(-1);
                 threadsCounter++;
-                bufferRead = new byte[bytesPerWorker];
+                bufferRead = new byte[_bytesPerWorker];
             }
             WaitHandle.WaitAll(globalWaitHandles);
             sourceStream.Close();
@@ -115,12 +118,12 @@ namespace GZipTest
             return memStreamDictionary;
         }
 
-        private int WriteUncompressedDataToDestinationStream(Stream destStream, IDictionary<int, MemoryStream> uncopressedData)
+        private int WriteUncompressedDataToDestinationStream(Stream destStream, IDictionary<int, MemoryStream> uncompressedData)
         {
             var unCompressedBytesCount = 0;
-            for (var i = 0; i < uncopressedData.Count(); i++)
+            for (var i = 0; i < uncompressedData.Count(); i++)
             {
-                var uncopressedBytesSlice = uncopressedData[i];
+                var uncopressedBytesSlice = uncompressedData[i];
                 var length = (int)uncopressedBytesSlice.Length;
                 byte[] buffToWrite = new byte[length];
                 uncopressedBytesSlice.Seek(0, 0);
@@ -188,7 +191,6 @@ namespace GZipTest
             byte[] lengthInBytes = BitConverter.GetBytes(lengthToStore);
             string base64Enc = Convert.ToBase64String(lengthInBytes);
             byte[] finalStore = System.Text.Encoding.ASCII.GetBytes(base64Enc);
-
             return finalStore;
         }
 
