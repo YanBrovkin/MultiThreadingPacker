@@ -27,11 +27,11 @@ namespace GZipTest
                     return;
 
                 case "compress":
-                    Console.Write($"Compressed {archiver.Compress(args[1], args[2])} bytes");
+                    Console.Write($"Bytes after compression: {archiver.Compress(args[1], args[2])}");
                     return;
 
                 case "decompress":
-                    Console.Write($"Decompressed {archiver.Decompress(args[1], args[2])} bytes");
+                    Console.Write($"Bytes after compression: {archiver.Decompress(args[1], args[2])}");
                     return;
             }
         }
