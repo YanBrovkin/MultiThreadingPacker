@@ -19,7 +19,7 @@ namespace GZipTest
                 Console.WriteLine($"File '{args[1]}' not exist");
                 return;
             }
-            var archiver = new GZipWrapper(bytesPerWorker: 1048576);
+            var archiver = new GZipWrapper(maximumThreadsCount: 10);
             switch (args[0])
             {
                 case null:

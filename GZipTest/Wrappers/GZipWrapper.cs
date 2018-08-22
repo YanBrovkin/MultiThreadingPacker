@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -8,38 +9,48 @@ namespace GZipTest
 {
     public class GZipWrapper : IArchivator
     {
-        private readonly int _bytesPerWorker;
-        private static object locker = new object();
+        private readonly int _maximumThreadsCount;
+        private Stream sourceStream;
+        private Stream destStream;
+        private static readonly object locker = new object();
 
-        public GZipWrapper(int bytesPerWorker)
-            => _bytesPerWorker = bytesPerWorker;
+        public GZipWrapper(int maximumThreadsCount)
+            => _maximumThreadsCount = maximumThreadsCount;
 
         public int Compress(string sourceFile, string destFile)
         {
             Console.WriteLine($@"[{DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss")}] Compression started");
-            using (var sourceStream = new FileStream(sourceFile, FileMode.Open))
+            //using (var sourceStream = new FileStream(sourceFile, FileMode.Open))
             using (var resultStream = new FileStream(destFile, FileMode.Create))
-            using (var compressedStream = new GZipStream(resultStream, CompressionMode.Compress))
+            using (var compressedStream = new GZipStream(resultStream, CompressionMode.Compress, true))
             {
                 var fileLength = (int)sourceStream.Length;
                 var bytesProcessed = 0;
                 while (bytesProcessed < fileLength)
                 {
-                    var threadsCount = Enumerable.Range(1, 10).Where(p => fileLength % p == 0).Max();
+                    var range = Enumerable.Range(1, _maximumThreadsCount);
+                    var threadsCount = range.Where(p => fileLength / p >= 1).Max();
                     var bytesPerWorker = fileLength / threadsCount;
                     var waitHandles = new WaitHandle[threadsCount];
+                    var threadsInformation = new Dictionary<int, (int Offset, Thread thread)>(threadsCount);
                     for (var i = 0; i < threadsCount; i++)
                     {
                         var handle = new EventWaitHandle(false, EventResetMode.ManualReset);
+                        if (i == (threadsCount - 1))
+                            bytesPerWorker += fileLength % threadsCount;
                         var buffer = new byte[bytesPerWorker];
-                        sourceStream.Read(buffer, bytesProcessed, bytesPerWorker);
+                        sourceStream.Seek(bytesProcessed, SeekOrigin.Begin);
+                        sourceStream.Read(buffer, 0, buffer.Length);
                         var spec = new WorkerSpec(bytesProcessed, buffer);
                         var worker = new Thread(p =>
                         {
                             var currentThreadId = Thread.CurrentThread.ManagedThreadId;
                             var param = (WorkerSpec)p;
                             lock (locker)
-                                compressedStream.Write(param.Buffer, param.Offset, param.Buffer.Length);
+                            {
+                                resultStream.Seek(param.Offset, SeekOrigin.Begin);
+                                compressedStream.Write(param.Buffer, 0, param.Buffer.Length);
+                            }
                             Console.WriteLine($"Thread {currentThreadId}: wrote {param.Buffer.Length} bytes from offset {param.Offset}");
                             handle.Set();
                         })
@@ -59,6 +70,12 @@ namespace GZipTest
         {
             Console.WriteLine("Decompress");
             return 0;
+        }
+
+        private void OpenFiles(string sourceFile, string destFile)
+        {
+            sourceStream = new FileStream(sourceFile, FileMode.Open);
+            destStream = new FileStream(destFile, FileMode.Create);
         }
 
         public struct WorkerSpec
