@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using GZipTest.Wrappers;
 
 namespace GZipTest
 {
@@ -21,7 +22,8 @@ namespace GZipTest
                 Console.WriteLine($"File '{args[1]}' not exist");
                 return;
             }
-            var archiver = new GZipWrapper(bytesPerWorker: _bytesPerWorker);
+            var converter = new ByteLengthConverter();
+            var archiver = new GZipWrapper(bytesPerWorker: _bytesPerWorker, converter: converter);
             switch (args[0])
             {
                 case null:
