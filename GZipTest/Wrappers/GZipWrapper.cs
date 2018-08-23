@@ -87,7 +87,7 @@ namespace GZipTest
                 threadsCounter++;
                 bufferRead = new byte[_bytesPerWorker];
             }
-            WaitHandle.WaitAll(globalWaitHandles);
+            WaitAllHandlers(globalWaitHandles);
             sourceStream.Close();
             return memStreams;
         }
@@ -121,7 +121,7 @@ namespace GZipTest
                 threads[counter].Start();
                 paramSyncEvent.WaitOne(-1);
             }
-            WaitHandle.WaitAll(globalWaitHandles);
+            WaitAllHandlers(globalWaitHandles);
             sourceStream.Close();
             return memStreamDictionary;
         }
@@ -191,6 +191,24 @@ namespace GZipTest
             cmpStream.Close();
             globalSyncEvent.Set();
             Console.WriteLine($"Thread {index} decompressed {uncompressedLength} bytes");
+        }
+
+        private void WaitAllHandlers(WaitHandle[] waitHandles)
+        {
+            const int waitAllArrayLimit = 64;
+            var prevEndInd = -1;
+            while (prevEndInd < waitHandles.Length - 1)
+            {
+                var stInd = prevEndInd + 1;
+                var eInd = stInd + waitAllArrayLimit - 1;
+                if (eInd > waitHandles.Length - 1)
+                {
+                    eInd = waitHandles.Length - 1;
+                }
+                prevEndInd = eInd;
+                var whSubarray = waitHandles.Skip(stInd).Take(eInd - stInd + 1).ToArray();
+                WaitHandle.WaitAll(whSubarray);
+            }
         }
     }
 }
