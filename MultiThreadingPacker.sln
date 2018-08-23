@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.27703.2042
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GZipTest", "GZipTest\GZipTest.csproj", "{D46B7292-D1F2-46D6-9D0B-B7B0DF426F6B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj", "{51272E71-FAC1-474D-B722-358E7792DAB2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{D46B7292-D1F2-46D6-9D0B-B7B0DF426F6B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D46B7292-D1F2-46D6-9D0B-B7B0DF426F6B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D46B7292-D1F2-46D6-9D0B-B7B0DF426F6B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{51272E71-FAC1-474D-B722-358E7792DAB2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{51272E71-FAC1-474D-B722-358E7792DAB2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{51272E71-FAC1-474D-B722-358E7792DAB2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{51272E71-FAC1-474D-B722-358E7792DAB2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

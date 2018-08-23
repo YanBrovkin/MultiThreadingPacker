@@ -4,17 +4,22 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Threading;
+using GZipTest.Interfaces;
 
 namespace GZipTest
 {
     public class GZipWrapper : ICompressionWrapper
     {
         private readonly int _bytesPerWorker;
+        private readonly IByteLengthConverter _converter;
         private Stream _sourceStream;
         private Stream _destStream;
 
-        public GZipWrapper(int bytesPerWorker)
-            => _bytesPerWorker = bytesPerWorker;
+        public GZipWrapper(int bytesPerWorker, IByteLengthConverter converter)
+        {
+            _bytesPerWorker = bytesPerWorker;
+            _converter = converter;
+        }
 
         public int Compress(string sourceFile, string destFile)
         {
@@ -43,6 +48,9 @@ namespace GZipTest
 
         public virtual Stream GetDestinationStream(string destinationFile)
             => new FileStream(destinationFile, FileMode.Create);
+
+        public virtual Stream GetZipStream(Stream destStream, CompressionMode compressionMode)
+            => new GZipStream(destStream, compressionMode, true);
 
         private IDictionary<int, MemoryStream> GetCompressedStreamsDictionary(Stream sourceStream)
         {
@@ -94,7 +102,7 @@ namespace GZipTest
             {
                 if (readLength != 8)
                     throw new Exception("File corrupted");
-                int lengthToRead = GetLengthFromBytes(buffToReadLength);
+                int lengthToRead = _converter.GetLengthFromBytes(buffToReadLength);
                 byte[] buffRead = new byte[lengthToRead];
 
                 if (lengthToRead != sourceStream.Read(buffRead, 0, lengthToRead))
@@ -140,7 +148,7 @@ namespace GZipTest
             var compressedBytesCount = 0;
             for (var i = 0; i < memStreamDictionary.Count; i++)
             {
-                var lengthToStore = GetBytesToStore((int)memStreamDictionary[i].Length);
+                var lengthToStore = _converter.GetBytesFromLength((int)memStreamDictionary[i].Length);
                 destStream.Write(lengthToStore, 0, lengthToStore.Length);
                 var compressedBytes = memStreamDictionary[i].ToArray();
                 memStreamDictionary[i].Close();
@@ -157,7 +165,7 @@ namespace GZipTest
         {
             syncEvent.Set();
             var stream = new MemoryStream();
-            var gzStream = new GZipStream(stream, CompressionMode.Compress, true);
+            var gzStream = GetZipStream(stream, CompressionMode.Compress);
             gzStream.Write(bytesToCompress, 0, length);
             gzStream.Close();
             memStreams.Add(index, stream);
@@ -165,11 +173,11 @@ namespace GZipTest
             Console.WriteLine($"Thread {index} compressed {length} bytes");
         }
 
-        private static void UnCompressStream(byte[] bytesToDecompress, int index, Dictionary<int, MemoryStream> memStreams, EventWaitHandle syncEvent, EventWaitHandle globalSyncEvent)
+        private void UnCompressStream(byte[] bytesToDecompress, int index, IDictionary<int, MemoryStream> memStreams, EventWaitHandle syncEvent, EventWaitHandle globalSyncEvent)
         {
             syncEvent.Set();
             var cmpStream = new MemoryStream(bytesToDecompress);
-            var unCompZip = new GZipStream(cmpStream, CompressionMode.Decompress, true);
+            var unCompZip = GetZipStream(cmpStream, CompressionMode.Decompress);
             var unCompressedBuffer = new byte[bytesToDecompress.Length];
             var msToAssign = new MemoryStream();
             var read = 0;
@@ -183,23 +191,6 @@ namespace GZipTest
             cmpStream.Close();
             globalSyncEvent.Set();
             Console.WriteLine($"Thread {index} decompressed {uncompressedLength} bytes");
-        }
-
-        private byte[] GetBytesToStore(int length)
-        {
-            int lengthToStore = System.Net.IPAddress.HostToNetworkOrder(length);
-            byte[] lengthInBytes = BitConverter.GetBytes(lengthToStore);
-            string base64Enc = Convert.ToBase64String(lengthInBytes);
-            byte[] finalStore = System.Text.Encoding.ASCII.GetBytes(base64Enc);
-            return finalStore;
-        }
-
-        private int GetLengthFromBytes(byte[] intToParse)
-        {
-            string base64Enc = System.Text.Encoding.ASCII.GetString(intToParse);
-            byte[] normStr = Convert.FromBase64String(base64Enc);
-            int length = BitConverter.ToInt32(normStr, 0);
-            return System.Net.IPAddress.NetworkToHostOrder(length);
         }
     }
 }

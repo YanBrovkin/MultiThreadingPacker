@@ -43,6 +43,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Interfaces\IByteLengthConverter.cs" />
+    <Compile Include="Wrappers\ByteLengthConverter.cs" />
     <Compile Include="Wrappers\GZipWrapper.cs" />
     <Compile Include="Interfaces\ICompressionWrapper.cs" />
     <Compile Include="Program.cs" />
